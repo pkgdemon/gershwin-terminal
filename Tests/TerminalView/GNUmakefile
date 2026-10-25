@@ -6,7 +6,7 @@ include $(GNUSTEP_MAKEFILES)/common.make
 
 GNUSTEP_OBJ_DIR=./obj
 
-TEST_TOOL_NAME =  t_FlipSide t_Selection
+TEST_TOOL_NAME =  t_FlipSide t_Selection t_WindowScale
 
 ADDITIONAL_CPPFLAGS += -I$(GNUSTEP_MAKEFILES)/TestFramework
 
@@ -23,6 +23,7 @@ ADDITIONAL_OBJCCFLAGS += -Wno-deprecated
 
 t_FlipSide_OBJC_FILES=t_FlipSide.m
 t_Selection_OBJC_FILES=t_Selection.m
+t_WindowScale_OBJC_FILES=t_WindowScale.m
 
 -include GNUmakefile.preamble
 -include make-check.mak

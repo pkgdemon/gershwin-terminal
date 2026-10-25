@@ -19,6 +19,6 @@ BOOL TerminalIsBoxDrawingCharacter(unichar c);
 
 /* Draws c with the current color into cell, whose edges must lie on device
    pixels. */
-void TerminalDrawBoxDrawingCharacter(NSGraphicsContext *ctx, unichar c, NSRect cell);
+void TerminalDrawBoxDrawingCharacter(NSGraphicsContext *ctx, unichar c, NSRect cell, CGFloat scale);
 
 #endif

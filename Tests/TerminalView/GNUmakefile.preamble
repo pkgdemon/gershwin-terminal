@@ -20,3 +20,18 @@ endif
 ifeq ($(findstring openbsd,$(GNUSTEP_TARGET_OS)),openbsd)
 t_Selection_TOOL_LIBS += -liconv
 endif
+
+# Same in-process inclusion of TerminalView.m as t_Selection.
+t_WindowScale_OBJC_FILES += ../../Defaults.m \
+                            ../../TerminalParser_Linux.m \
+                            ../../CharacterWidth.m \
+                            ../../BoxDrawing.m
+
+t_WindowScale_TOOL_LIBS += -lgnustep-gui -lutil -lX11
+
+ifeq ($(findstring freebsd,$(GNUSTEP_TARGET_OS)),freebsd)
+t_WindowScale_TOOL_LIBS += -liconv
+endif
+ifeq ($(findstring openbsd,$(GNUSTEP_TARGET_OS)),openbsd)
+t_WindowScale_TOOL_LIBS += -liconv
+endif

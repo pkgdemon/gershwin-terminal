@@ -318,14 +318,14 @@ BOOL TerminalIsBoxDrawingCharacter(unichar c)
   return c >= 0x2500 && c <= 0x259F;
 }
 
-void TerminalDrawBoxDrawingCharacter(NSGraphicsContext *ctx, unichar ch, NSRect cell)
+void TerminalDrawBoxDrawingCharacter(NSGraphicsContext *ctx, unichar ch, NSRect cell, CGFloat scale)
 {
   Cell c;
 
   c.ctx = ctx;
   c.x = cell.origin.x;
   c.y = cell.origin.y;
-  c.scale = [Defaults deviceScaleFactor];
+  c.scale = scale;
   c.w = (int)lround(cell.size.width * c.scale);
   c.h = (int)lround(cell.size.height * c.scale);
   // Scale the line weight with the font like the glyphs it replaces
