@@ -323,8 +323,36 @@ NSString *TerminalWindowSizeDidChangeNotification = @"TerminalWindowSizeDidChang
                                            selector:@selector(updateTitleBar:)
                                                name:TerminalViewTitleDidChangeNotification
                                              object:tView];
+  // By name: libs-gui only posts it where windows have per-monitor scales.
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(windowScaleDidChange:)
+                                               name:@"NSWindowDidChangeBackingPropertiesNotification"
+                                             object:win];
 
   return self;
+}
+
+// The cells are aligned to the device pixels of the window's own factor,
+// so a cell has another size in points on a monitor of another scale.
+// The window is fitted to the rows and columns it had: fitting the rows and
+// columns to the window instead would cut off text at the right edge.
+- (void)windowScaleDidChange:(NSNotification *)aNotification
+{
+  NSSize cells = [tView windowSize];
+
+  [tView setIgnoreResize:YES];
+  [tView alignToWindowScale];
+  if (!flipSide) {
+    charCellSize = [tView characterCellSize];
+    terminalColumns = cells.width;
+    terminalRows = cells.height;
+    [self calculateSizes];
+    [win setResizeIncrements:NSMakeSize(charCellSize.width, charCellSize.height)];
+    [win setMinSize:winMinimumSize];
+    [win setContentSize:winContentSize];
+  }
+  [tView setIgnoreResize:NO];
+  [tView alignToWindowScale];
 }
 
 - (void)dealloc

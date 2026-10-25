@@ -88,9 +88,12 @@ typedef enum {
 
 @interface Defaults (Window)
 + (NSSize)characterCellSizeForFont:(NSFont *)font;
++ (NSSize)characterCellSizeForFont:(NSFont *)font scale:(CGFloat)scale;
 + (CGFloat)deviceScaleFactor;
 + (CGFloat)ceilToDevicePixels:(CGFloat)length;
++ (CGFloat)ceilToDevicePixels:(CGFloat)length scale:(CGFloat)scale;
 + (CGFloat)roundToDevicePixels:(CGFloat)length;
++ (CGFloat)roundToDevicePixels:(CGFloat)length scale:(CGFloat)scale;
 + (NSFont *)boldTerminalFontForFont:(NSFont *)font;
 
 - (int)windowWidth;

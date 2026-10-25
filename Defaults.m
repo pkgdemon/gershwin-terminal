@@ -293,6 +293,13 @@ NSString *TerminalFontSizeKey = @"TerminalFontSize";
 }
 + (NSSize)characterCellSizeForFont:(NSFont *)font
 {
+  return [self characterCellSizeForFont:font scale:[self deviceScaleFactor]];
+}
+
+// The scale is that of the window the cells are drawn in: with monitors of
+// different scales a window need not have the factor of the main screen.
++ (NSSize)characterCellSizeForFont:(NSFont *)font scale:(CGFloat)scale
+{
   NSRect r;
   NSSize s;
 
@@ -308,9 +315,9 @@ NSString *TerminalFontSizeKey = @"TerminalFontSize";
   // dirt wherever only some cells are redrawn (e.g. selection changes).
   // Ascent and descent are aligned separately so the baseline, which
   // TerminalView places at the aligned descent, is on a pixel as well.
-  s.width = [self ceilToDevicePixels:[font advancementForGlyph:'M'].width];
-  s.height = [self ceilToDevicePixels:-r.origin.y] +
-             [self ceilToDevicePixels:r.size.height + r.origin.y];
+  s.width = [self ceilToDevicePixels:[font advancementForGlyph:'M'].width scale:scale];
+  s.height = [self ceilToDevicePixels:-r.origin.y scale:scale] +
+             [self ceilToDevicePixels:r.size.height + r.origin.y scale:scale];
 
   // NSLog (@"Font %@ bounding rect: %@ XHeight: %f line height: %f",
   //        [font fontName], NSStringFromSize(s),
@@ -328,8 +335,11 @@ NSString *TerminalFontSizeKey = @"TerminalFontSize";
 
 + (CGFloat)ceilToDevicePixels:(CGFloat)length
 {
-  CGFloat scale = [self deviceScaleFactor];
+  return [self ceilToDevicePixels:length scale:[self deviceScaleFactor]];
+}
 
++ (CGFloat)ceilToDevicePixels:(CGFloat)length scale:(CGFloat)scale
+{
   // The epsilon keeps lengths that are already pixel aligned, but carry a
   // float rounding error, from growing by a whole pixel.
   return ceil(length * scale - 0.001) / scale;
@@ -337,8 +347,11 @@ NSString *TerminalFontSizeKey = @"TerminalFontSize";
 
 + (CGFloat)roundToDevicePixels:(CGFloat)length
 {
-  CGFloat scale = [self deviceScaleFactor];
+  return [self roundToDevicePixels:length scale:[self deviceScaleFactor]];
+}
 
++ (CGFloat)roundToDevicePixels:(CGFloat)length scale:(CGFloat)scale
+{
   // Used for lines (underline, cursor) which must not vanish when scaled.
   return MAX(1.0, round(length * scale)) / scale;
 }

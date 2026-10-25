@@ -109,6 +109,8 @@ struct selection_range {
   BOOL cursorVisible;
 
   float border_x, border_y;
+  float requested_border_x, requested_border_y;
+  CGFloat aligned_scale;
 
   // Selection
   struct selection_range selection;
@@ -175,6 +177,11 @@ struct selection_range {
 
 - (void)setIgnoreResize:(BOOL)ignore;
 - (void)setBorderX:(float)x Y:(float)y;
+// The cell size in points, aligned to the device pixels of the window.
+- (NSSize)characterCellSize;
+// Aligns cells, border and lines to the device pixels of the window's
+// current scale factor and redraws everything.
+- (void)alignToWindowScale;
 
 - (void)setAdditionalWordCharacters:(NSString *)str;
 

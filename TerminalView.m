@@ -94,6 +94,11 @@
 }
 @end
 
+@interface TerminalView (window_scale)
+- (CGFloat)deviceScale;
+- (BOOL)_isAwaitingScaleAlignment;
+@end
+
 @interface TerminalView (blink_private)
 - (BOOL)_cursorShouldBlink;
 - (void)_blinkCursorTick;
@@ -897,7 +902,7 @@ static void set_foreground(NSGraphicsContext *gc, unsigned char color, unsigned 
         //--- FONTS & ENCODING
         if (TerminalIsBoxDrawingCharacter(ch->ch)) {
           total_draw++;
-          TerminalDrawBoxDrawingCharacter(cur, ch->ch, NSMakeRect(scr_x, scr_y, fx, fy));
+          TerminalDrawBoxDrawingCharacter(cur, ch->ch, NSMakeRect(scr_x, scr_y, fx, fy), [self deviceScale]);
         } else if (ch->ch != 0 && ch->ch != 32 && ch->ch != MULTI_CELL_GLYPH) {
           total_draw++;
           if ((ch->attr & 3) == 2) {
@@ -973,7 +978,7 @@ static void set_foreground(NSGraphicsContext *gc, unsigned char color, unsigned 
 
         //--- UNDERLINE — SGR underline or URL link
         if ((ch->attr & 0x4) || urlMask[ix]) {
-          DPSrectfill(cur, scr_x, scr_y, fx, [Defaults roundToDevicePixels:1.0]);
+          DPSrectfill(cur, scr_x, scr_y, fx, [Defaults roundToDevicePixels:1.0 scale:[self deviceScale]]);
         }
 
         wasURL = urlMask[ix];
@@ -998,7 +1003,7 @@ static void set_foreground(NSGraphicsContext *gc, unsigned char color, unsigned 
           break;
         case CURSOR_BLOCK_STROKE:  // 1
         {
-          CGFloat w = [Defaults roundToDevicePixels:1.0];
+          CGFloat w = [Defaults roundToDevicePixels:1.0 scale:[self deviceScale]];
 
           // Stroke on pixel centers so the outline is exactly one line wide.
           DPSgsave(cur);
@@ -1011,7 +1016,7 @@ static void set_foreground(NSGraphicsContext *gc, unsigned char color, unsigned 
           DPSrectfill(cur, x, y, fx, fy);
           break;
         case CURSOR_LINE:  // 3
-          DPSrectfill(cur, x, y, fx, [Defaults roundToDevicePixels:fy * 0.1]);
+          DPSrectfill(cur, x, y, fx, [Defaults roundToDevicePixels:fy * 0.1 scale:[self deviceScale]]);
           break;
       }
     }
@@ -1584,6 +1589,9 @@ static NSString *TitleWithoutLeadingSymbol(NSString *title)
 - (void)viewDidMoveToWindow
 {
   [super viewDidMoveToWindow];
+  if ([self window] != nil) {
+    [self alignToWindowScale];
+  }
   [[self window] setAcceptsMouseMovedEvents:YES];
   [self blinkCursor];
 }
@@ -3245,9 +3253,22 @@ static int handled_mask = (NSDragOperationCopy | NSDragOperationPrivate | NSDrag
   [self setNeedsDisplay:YES];
 }
 
+// While the window has switched its scale factor and the cells are not
+// aligned to it yet, the new frame is the same size in points, and fitting
+// the grid with cells of the old factor would drop a row or column; the
+// realignment that follows fits it.
+- (BOOL)_isAwaitingScaleAlignment
+{
+  return aligned_scale > 0 && [self window] != nil
+         && fabs([self deviceScale] - aligned_scale) > 0.001;
+}
+
 - (void)setFrame:(NSRect)frame
 {
   [super setFrame:frame];
+  if ([self _isAwaitingScaleAlignment]) {
+    return;
+  }
   [self _resizeTerminalTo:frame.size];
 
   [[NSNotificationCenter defaultCenter] postNotificationName:TerminalViewSizeDidChangeNotification
@@ -3257,6 +3278,9 @@ static int handled_mask = (NSDragOperationCopy | NSDragOperationPrivate | NSDrag
 - (void)setFrameSize:(NSSize)size
 {
   [super setFrameSize:size];
+  if ([self _isAwaitingScaleAlignment]) {
+    return;
+  }
   [self _resizeTerminalTo:size];
 
   [[NSNotificationCenter defaultCenter] postNotificationName:TerminalViewSizeDidChangeNotification
@@ -3375,7 +3399,7 @@ static int handled_mask = (NSDragOperationCopy | NSDragOperationPrivate | NSDrag
 
   ASSIGN(font, aFont);
 
-  s = [Defaults characterCellSizeForFont:font];
+  s = [Defaults characterCellSizeForFont:font scale:[self deviceScale]];
   fx = s.width;
   fy = s.height;
 
@@ -3383,7 +3407,7 @@ static int handled_mask = (NSDragOperationCopy | NSDragOperationPrivate | NSDrag
   fx0 = -r.origin.x;
   // Same alignment as the cell height in characterCellSizeForFont:, so the
   // baseline sits on a device pixel.
-  fy0 = [Defaults ceilToDevicePixels:-r.origin.y];
+  fy0 = [Defaults ceilToDevicePixels:-r.origin.y scale:[self deviceScale]];
   font_encoding = [font mostCompatibleStringEncoding];
 
   NSDebugLLog(@"term", @"Bounding (%g %g)+(%g %g)", -fx0, -fy0, fx, fy);
@@ -3595,9 +3619,42 @@ static int handled_mask = (NSDragOperationCopy | NSDragOperationPrivate | NSDrag
 
 - (void)setBorderX:(float)x Y:(float)y
 {
+  requested_border_x = x;
+  requested_border_y = y;
   // Cell edges are offset by the border; see characterCellSizeForFont:.
-  border_x = [Defaults roundToDevicePixels:x];
-  border_y = [Defaults roundToDevicePixels:y];
+  border_x = [Defaults roundToDevicePixels:x scale:[self deviceScale]];
+  border_y = [Defaults roundToDevicePixels:y scale:[self deviceScale]];
+}
+
+// Cells, borders and lines are aligned to the device pixels of the window
+// they are drawn in, which with monitors of different scales is not
+// necessarily the main screen's factor; before the view is in a window
+// that is the best guess.
+- (NSSize)characterCellSize
+{
+  return NSMakeSize(fx, fy);
+}
+
+- (CGFloat)deviceScale
+{
+  NSWindow *w = [self window];
+
+  return w ? [w userSpaceScaleFactor] : [Defaults deviceScaleFactor];
+}
+
+// Called when the view gets a window and when its window changes its
+// scale factor (moved to a monitor of another scale).  The backing store
+// is new then, so every cell has to be drawn, not only the dirty ones.
+- (void)alignToWindowScale
+{
+  aligned_scale = [self deviceScale];
+  if (font != nil) {
+    [self setFont:font];
+  }
+  [self setBorderX:requested_border_x Y:requested_border_y];
+  [self _resizeTerminalTo:[self frame].size];
+  draw_all = 2;
+  [self setNeedsDisplay:YES];
 }
 
 #pragma mark - Drag and Drop
