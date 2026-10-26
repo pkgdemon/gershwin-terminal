@@ -26,8 +26,16 @@ ADDITIONAL_GUI_LIBS +=
 
 ADDITIONAL_LDFLAGS += -lutil -lX11
 
+# FreeBSD has iconv in libc; -liconv is only for the separate GNU libiconv from
+# packages (converters/libiconv, in /usr/local), whose iconv.h renames iconv_*
+# to libiconv_*. NextBSD, which also builds as a *freebsd* target, ships no
+# libiconv at all, so -liconv is added only when the library is there to link.
+ICONV_LINKS := $(shell printf 'int main(void){return 0;}\n' | \
+	$(or $(CC),cc) -x c - -o /dev/null -L/usr/local/lib -liconv >/dev/null 2>&1 && echo yes)
 ifeq ($(findstring freebsd,$(GNUSTEP_TARGET_OS)),freebsd)
+ifeq ($(ICONV_LINKS),yes)
 ADDITIONAL_LDFLAGS += -liconv
+endif
 endif
 
 # On OpenBSD, iconv is provided by GNU libiconv (its header rewrites iconv_* to
