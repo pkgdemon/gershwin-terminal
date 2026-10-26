@@ -14,8 +14,14 @@ t_Selection_OBJC_FILES += ../../Defaults.m \
 
 t_Selection_TOOL_LIBS += -lgnustep-gui -lutil -lX11
 
+# -liconv only when a separate libiconv exists to link (NextBSD has none and
+# keeps iconv in libc); see ../../GNUmakefile.preamble.
+ICONV_LINKS := $(shell printf 'int main(void){return 0;}\n' | \
+	$(or $(CC),cc) -x c - -o /dev/null -L/usr/local/lib -liconv >/dev/null 2>&1 && echo yes)
 ifeq ($(findstring freebsd,$(GNUSTEP_TARGET_OS)),freebsd)
+ifeq ($(ICONV_LINKS),yes)
 t_Selection_TOOL_LIBS += -liconv
+endif
 endif
 ifeq ($(findstring openbsd,$(GNUSTEP_TARGET_OS)),openbsd)
 t_Selection_TOOL_LIBS += -liconv
@@ -30,7 +36,9 @@ t_WindowScale_OBJC_FILES += ../../Defaults.m \
 t_WindowScale_TOOL_LIBS += -lgnustep-gui -lutil -lX11
 
 ifeq ($(findstring freebsd,$(GNUSTEP_TARGET_OS)),freebsd)
+ifeq ($(ICONV_LINKS),yes)
 t_WindowScale_TOOL_LIBS += -liconv
+endif
 endif
 ifeq ($(findstring openbsd,$(GNUSTEP_TARGET_OS)),openbsd)
 t_WindowScale_TOOL_LIBS += -liconv
